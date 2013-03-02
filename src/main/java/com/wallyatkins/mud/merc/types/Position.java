@@ -17,7 +17,7 @@ public enum Position {
 		this.index = index;
 	}
 	
-	public int index() {
+	public short index() {
 		return index;
 	}
 

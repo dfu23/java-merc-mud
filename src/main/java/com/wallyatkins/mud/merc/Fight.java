@@ -10,7 +10,6 @@ public class Fight {
 	
 	/**
 	 * Do one group of attacks.
-	 * 
 	 * @param attacker
 	 * @param victim
 	 * @param damageType
@@ -80,7 +79,6 @@ public class Fight {
 
 	/**
 	 * Hit one guy once.
-	 * 
 	 * @param attacker
 	 * @param victim
 	 * @param damageType
@@ -127,7 +125,72 @@ public class Fight {
 			thac0_32 = Constants.class_table[attacker.clazz].thac0_32;
 		}
 		thac0 = DB.interpolate(attacker.level, thac0_00, thac0_32) - attacker.GET_HITROLL();
-		// TODO: victim_ac
+		victim_ac = Macros.UMAX(-15, victim.GET_AC() / 10);
+		if (!Handler.can_see(attacker, victim)) {
+			victim_ac -= 4;
+		}
+		
+		/*
+		 * The moment of excitement!
+		 */
+		while((diceroll = DB.number_bits(5)) >= 20);
+		
+		if (diceroll == 0 ||
+				(diceroll != 19 && diceroll < thac0 - victim_ac)) {
+			/* Miss. */
+			damage(attacker, victim, 0, damageType);
+			DB.tail_chain();
+			return;
+		}
+		
+		/*
+		 * Hit.
+		 * Calculate damage.
+		 */
+		if (attacker.IS_NPC()) {
+			dam = DB.number_range(attacker.level / 2, attacker.level * 3 / 2);
+			if (wield != null) {
+				dam += dam / 2;
+			}
+		} else {
+			if (wield != null) {
+				dam = DB.number_range(wield.value[1], wield.value[2]);
+			} else {
+				dam = DB.number_range(1, 4);
+			}
+		}
+		
+		/*
+		 * Bonuses.
+		 */
+		dam += attacker.GET_DAMROLL();
+		//if (!attacker.IS_NPC() &&
+		//		attacker.pcdata > 0) {
+		//	
+		//}
 	}
 
+	/**
+	 * Inflict damage from a hit.
+	 * @param attacker
+	 * @param victim
+	 * @param damage
+	 * @param damageType
+	 */
+	private void damage(MudCharacter attacker, MudCharacter victim, int damage, SkillSpell damageType) {
+		if (victim.position.index() == Position.DEAD.index()) {
+			return;
+		}
+		
+		/*
+		 * Stop and residual loopholes
+		 */
+		if (damage > 1000) {
+			// TODO: log a bug - SLF4J?
+			//bug("Damage: %d: more than 1000 points!");
+			damage = 1000;
+		}
+		
+		// TODO: a lot more damage infliction logic
+	}
 }

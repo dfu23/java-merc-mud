@@ -11,5 +11,5 @@ public class RoomIndexData {
 	public short vnum;
 	public short room_flags;
 	public short light;
-	public short sector_types;
+	public short sector_type;
 }

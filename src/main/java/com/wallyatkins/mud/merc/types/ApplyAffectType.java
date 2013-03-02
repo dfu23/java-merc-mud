@@ -34,7 +34,7 @@ public enum ApplyAffectType {
 		this.index = index;
 	}
 	
-	public int index() {
+	public short index() {
 		return index;
 	}
 

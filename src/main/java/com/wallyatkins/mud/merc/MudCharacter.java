@@ -89,7 +89,9 @@ public class MudCharacter {
 		return Handler.get_trust(this) >= Globals.LEVEL_HERO;
 	}
 	
-	// TODO: IS_AFFECTED()
+	public boolean IS_AFFECTED(int sn) {
+		return Macros.IS_SET(this.affected_by, sn);
+	}
 	
 	/**
 	 * Determines if this character is good or not.
@@ -121,6 +123,10 @@ public class MudCharacter {
 	 */
 	public boolean IS_AWAKE() {
 		return this.position.index() > Position.SLEEPING.index();
+	}
+	
+	public int GET_AC() {
+		return this.armor + (IS_AWAKE()  ? Constants.dex_app[Handler.get_curr_dex(this)].defensive : 0);
 	}
 	
 	/**

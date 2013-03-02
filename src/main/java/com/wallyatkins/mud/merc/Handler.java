@@ -2,10 +2,21 @@ package com.wallyatkins.mud.merc;
 
 import com.wallyatkins.mud.merc.types.ApplyAffectType;
 import com.wallyatkins.mud.merc.types.EquipmentWearLocation;
+import com.wallyatkins.mud.merc.types.ItemExtraFlag;
+import com.wallyatkins.mud.merc.types.ItemType;
 import com.wallyatkins.mud.merc.types.MobileActor;
+import com.wallyatkins.mud.merc.types.MobileAffectBits;
+import com.wallyatkins.mud.merc.types.PlayerActionBits;
+import com.wallyatkins.mud.merc.types.RoomFlags;
+import com.wallyatkins.mud.merc.types.RoomSectorTypes;
 
 public abstract class Handler {
-	
+		
+	/**
+	 * Retrieve a character's trusted level for permission checking.
+	 * @param character
+	 * @return
+	 */
 	public static int get_trust(MudCharacter character) {
 		if (character.desc != null && character.desc.original != null) {
 			character = character.desc.original;
@@ -15,7 +26,7 @@ public abstract class Handler {
 			return character.trust;
 		}
 		
-		if (character.act.equals(MobileActor.IS_NPC) && character.level >= Globals.LEVEL_HERO) {
+		if (character.IS_NPC() && character.level >= Globals.LEVEL_HERO) {
 			return Globals.LEVEL_HERO - 1;
 		} else {
 			return character.level;
@@ -39,7 +50,7 @@ public abstract class Handler {
 	public static int get_curr_str(MudCharacter character) {
 		int max;
 		
-		if (character.act.equals(MobileActor.IS_NPC)) {
+		if (character.IS_NPC()) {
 			return 13;
 		}
 		
@@ -60,7 +71,7 @@ public abstract class Handler {
 	public static int get_curr_int(MudCharacter character) {
 		int max;
 		
-		if (character.act.equals(MobileActor.IS_NPC)) {
+		if (character.IS_NPC()) {
 			return 13;
 		}
 		
@@ -81,7 +92,7 @@ public abstract class Handler {
 	public static int get_curr_wis(MudCharacter character) {
 		int max;
 		
-		if (character.act.equals(MobileActor.IS_NPC)) {
+		if (character.IS_NPC()) {
 			return 13;
 		}
 		
@@ -102,7 +113,7 @@ public abstract class Handler {
 	public static int get_curr_dex(MudCharacter character) {
 		int max;
 		
-		if (character.act.equals(MobileActor.IS_NPC)) {
+		if (character.IS_NPC()) {
 			return 13;
 		}
 		
@@ -123,7 +134,7 @@ public abstract class Handler {
 	public static int get_curr_con(MudCharacter character) {
 		int max;
 		
-		if (character.act.equals(MobileActor.IS_NPC)) {
+		if (character.IS_NPC()) {
 			return 13;
 		}
 		
@@ -142,11 +153,11 @@ public abstract class Handler {
 	 * @return
 	 */
 	public static int can_carry_n(MudCharacter character) {
-		if (!character.act.equals(MobileActor.IS_NPC) && character.level >= Globals.LEVEL_IMMORTAL) {
+		if (!character.IS_NPC() && character.level >= Globals.LEVEL_IMMORTAL) {
 			return 1000;
 		}
 		
-		if (!character.act.equals(MobileActor.IS_NPC) && Macros.IS_SET(character.act.index(), MobileActor.PET.index())) {
+		if (!character.IS_NPC() && Macros.IS_SET(character.act.index(), MobileActor.PET.index())) {
 			return 0;
 		}
 		
@@ -154,11 +165,11 @@ public abstract class Handler {
 	}
 	
 	public static int can_carry_w(MudCharacter character) {
-		if (!character.act.equals(MobileActor.IS_NPC) && character.level >= Globals.LEVEL_IMMORTAL) {
+		if (!character.IS_NPC() && character.level >= Globals.LEVEL_IMMORTAL) {
 			return 1000000;
 		}
 		
-		if (!character.act.equals(MobileActor.IS_NPC) && Macros.IS_SET(character.act.index(), MobileActor.PET.index())) {
+		if (!character.IS_NPC() && Macros.IS_SET(character.act.index(), MobileActor.PET.index())) {
 			return 0;
 		}
 		
@@ -180,5 +191,129 @@ public abstract class Handler {
 		}
 		return null;
 	}
+	
+	/**
+	 * True if room is dark.
+	 * @param roomIndex
+	 * @return
+	 */
+	public static boolean room_is_dark(RoomIndexData roomIndex) {
+		if (roomIndex.light > 0) {
+			return false;
+		}
+		
+		if (Macros.IS_SET(roomIndex.room_flags, RoomFlags.DARK.index())) {
+			return true;
+		}
+		
+		if (roomIndex.sector_type == RoomSectorTypes.INSIDE.index() || roomIndex.sector_type == RoomSectorTypes.CITY.index()) {
+			return false;
+		}
+		
+		// weather_info
+		if (Globals.weather_data.sunlight == Globals.SUN_SET || Globals.weather_data.sunlight == Globals.SUN_DARK)  {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * True if a character can see victim.
+	 * @param character
+	 * @param victim
+	 * @return
+	 */
+	public static boolean can_see(MudCharacter character, MudCharacter victim) {
+		if (character.equals(victim)) {
+			return true;
+		}
+		
+		if (!victim.IS_NPC() &&
+				Macros.IS_SET(victim.act.index(), PlayerActionBits.WISINVIS.index()) &&
+				get_trust(character) < get_trust(victim)) {
+			return false;
+		}
+		
+		if (!victim.IS_NPC() &&
+				Macros.IS_SET(character.act.index(), PlayerActionBits.HOLYLIGHT.index())) {
+			return true;
+		}
+		
+		if (character.IS_AFFECTED(MobileAffectBits.BLIND.index())) {
+			return false;
+		}
+		
+		if (room_is_dark(character.in_room) &&
+				!character.IS_AFFECTED(MobileAffectBits.INFRARED.index())) {
+			return false;
+		}
+		
+		if (victim.IS_AFFECTED(MobileAffectBits.INVISIBLE.index()) &&
+				!character.IS_AFFECTED(MobileAffectBits.DETECT_INVIS.index())) {
+			return false;
+		}
+		
+		if (victim.IS_AFFECTED(MobileAffectBits.HIDE.index()) &&
+				!character.IS_AFFECTED(MobileAffectBits.DETECT_HIDDEN.index()) &&
+				victim.fighting == null &&
+				character.IS_NPC() ? !victim.IS_NPC() : victim.IS_NPC()) {
+			return false;
+		}
+		
+		return true;
+	}
 
+	/**
+	 * True if character can see object.
+	 * @param character
+	 * @param object
+	 * @return
+	 */
+	public static boolean can_see_obj(MudCharacter character, MudObject object) {
+		if (!character.IS_NPC() &&
+				Macros.IS_SET(character.act.index(), PlayerActionBits.HOLYLIGHT.index())) {
+			return true;
+		}
+		
+		if (object.item_type.index() == ItemType.POTION.index()) {
+			return true;
+		}
+		
+		if (character.IS_AFFECTED(MobileAffectBits.BLIND.index())) {
+			return false;
+		}
+		
+		if (object.item_type.index() == ItemType.LIGHT.index() &&
+				object.value[2] != 0) {
+			return true;
+		}
+		
+		if (room_is_dark(character.in_room) &&
+				!character.IS_AFFECTED(MobileAffectBits.INFRARED.index())) {
+			return false;
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * True if character can drop object.
+	 * @param character
+	 * @param object
+	 * @return
+	 */
+	public static boolean can_drop_obj(MudCharacter character, MudObject object) {
+		if (!Macros.IS_SET(object.extra_flags, ItemExtraFlag.NODROP.index())) {
+			return true;
+		}
+		
+		if (!character.IS_NPC() &&
+				character.level >= Globals.LEVEL_IMMORTAL) {
+			return true;
+		}
+		
+		return false;
+	}
+	
 }
